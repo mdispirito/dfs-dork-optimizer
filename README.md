@@ -8,6 +8,6 @@ uv sync
 
 ## Run dev server
 ```
-uv run python optimizer/app.py
+uv run python -m optimizer.app
 ```
 Server starts on http://localhost:8080.

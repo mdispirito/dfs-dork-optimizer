@@ -8,7 +8,7 @@ Uses `pydfs-lineup-optimizer` as the core optimization engine.
 - Package manager: **uv** (not Poetry)
 - Python: 3.13+
 - Install deps: `uv sync`
-- Run dev server: `uv run python optimizer/app.py` (starts on port 8080)
+- Run dev server: `uv run python -m optimizer.app` (starts on port 8080)
 
 ## Project Structure
 ```
