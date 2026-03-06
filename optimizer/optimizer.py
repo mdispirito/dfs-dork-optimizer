@@ -1,15 +1,8 @@
-import csv
-import io
-import os
-
-import requests
-from dotenv import load_dotenv
 from pydfs_lineup_optimizer import Site, Sport, get_optimizer
 
 from optimizer.adapters.yahoo import convert_yahoo_players
+from optimizer.projections import fetch_projections
 from optimizer.util.player import generate_player_id
-
-load_dotenv()
 
 # Yahoo DFS fantasy point scoring weights
 YAHOO_NBA_SCORING = {
@@ -31,17 +24,11 @@ class DfsDorkOptimizer:
         players = convert_yahoo_players(yahoo_player_pool)
         self.lineup_optimizer.player_pool.load_players(players)
 
-    def load_external_projections(self):
+    def load_external_projections(self, force_refresh: bool = False):
         """Replace each player's FPPG with projected fantasy points from an external source."""
-        url = os.getenv("EXTERNAL_PROJECTIONS")
-        if not url:
-            raise ValueError("EXTERNAL_PROJECTIONS environment variable not set")
+        rows = fetch_projections(force_refresh=force_refresh)
 
-        response = requests.get(url)
-        response.raise_for_status()
-        reader = csv.DictReader(io.StringIO(response.text))
-
-        for row in reader:
+        for row in rows:
             player_id = generate_player_id(row["first_name"], row["last_name"], row["team"])
             player = self.lineup_optimizer.player_pool.get_player_by_id(player_id)
 

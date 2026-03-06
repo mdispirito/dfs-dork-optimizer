@@ -34,7 +34,8 @@ def optimize_lineups():
         optimizer.load_yahoo_players(body["player_pool"])
 
         if body.get("load_external_projections"):
-            optimizer.load_external_projections()
+            force_refresh = body.get("force_refresh_projections", False)
+            optimizer.load_external_projections(force_refresh=force_refresh)
 
         optimizer.exclude_players(body.get("excluded_players", []))
         optimizer.lock_players(body.get("locked_players", []))

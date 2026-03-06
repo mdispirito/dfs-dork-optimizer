@@ -1,9 +1,15 @@
+import csv
+import io
 from unittest.mock import patch, Mock
 
 import pytest
 from pydfs_lineup_optimizer import Site, Sport
 
 from optimizer.optimizer import DfsDorkOptimizer, YAHOO_NBA_SCORING
+
+
+def _csv_to_rows(csv_text: str) -> list[dict]:
+    return list(csv.DictReader(io.StringIO(csv_text)))
 
 
 class TestDfsDorkOptimizer:
@@ -30,8 +36,6 @@ class TestDfsDorkOptimizer:
             f"{p.first_name} {p.last_name}"
             for p in pool.all_players
         }
-        # remove_player raises if player not found, so just verify the call didn't error
-        # and the pool still has other players
         assert "Stephen Curry" in remaining_names
 
     def test_lock_players(self, sample_yahoo_players):
@@ -46,29 +50,38 @@ class TestDfsDorkOptimizer:
         ]
         assert any(p.first_name == "Stephen" for p in locked)
 
-    @patch("optimizer.optimizer.requests.get")
-    def test_load_external_projections(self, mock_get, sample_yahoo_players, sample_projections_csv):
-        mock_response = Mock()
-        mock_response.text = sample_projections_csv
-        mock_response.raise_for_status = Mock()
-        mock_get.return_value = mock_response
+    @patch("optimizer.optimizer.fetch_projections")
+    def test_load_external_projections(self, mock_fetch, sample_yahoo_players, sample_projections_csv):
+        mock_fetch.return_value = _csv_to_rows(sample_projections_csv)
 
-        with patch.dict("os.environ", {"EXTERNAL_PROJECTIONS": "http://example.com/proj.csv"}):
-            opt = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
-            opt.load_yahoo_players(sample_yahoo_players)
-            opt.load_external_projections()
+        opt = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
+        opt.load_yahoo_players(sample_yahoo_players)
+        opt.load_external_projections()
 
         pool = opt.lineup_optimizer.player_pool
         lebron = pool.get_player_by_id("leb_james_lal")
 
-        # 27*1 + 7*1.2 + 7*1.5 + 1.2*3 + 0.8*3 + 3.5*-1 = 27 + 8.4 + 10.5 + 3.6 + 2.4 - 3.5 = 48.4
+        # 27*1 + 7*1.2 + 7*1.5 + 1.2*3 + 0.8*3 + 3.5*-1 = 48.4
         assert lebron.fppg == pytest.approx(48.4)
+        mock_fetch.assert_called_once_with(force_refresh=False)
 
-    def test_load_external_projections_raises_without_env(self):
-        with patch.dict("os.environ", {}, clear=True):
-            opt = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
-            with pytest.raises(ValueError, match="EXTERNAL_PROJECTIONS"):
-                opt.load_external_projections()
+    @patch("optimizer.optimizer.fetch_projections")
+    def test_load_external_projections_force_refresh(self, mock_fetch, sample_yahoo_players, sample_projections_csv):
+        mock_fetch.return_value = _csv_to_rows(sample_projections_csv)
+
+        opt = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
+        opt.load_yahoo_players(sample_yahoo_players)
+        opt.load_external_projections(force_refresh=True)
+
+        mock_fetch.assert_called_once_with(force_refresh=True)
+
+    @patch("optimizer.optimizer.fetch_projections")
+    def test_load_external_projections_raises_on_error(self, mock_fetch):
+        mock_fetch.side_effect = ValueError("EXTERNAL_PROJECTIONS environment variable not set")
+
+        opt = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
+        with pytest.raises(ValueError, match="EXTERNAL_PROJECTIONS"):
+            opt.load_external_projections()
 
 
 class TestYahooNbaScoring:

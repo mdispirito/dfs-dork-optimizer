@@ -76,7 +76,21 @@ class TestOptimizeLineupsRoute:
             "load_external_projections": True,
         })
 
-        mock_instance.load_external_projections.assert_called_once()
+        mock_instance.load_external_projections.assert_called_once_with(force_refresh=False)
+
+    @patch("optimizer.app.DfsDorkOptimizer")
+    def test_passes_force_refresh_to_projections(self, MockOptimizer, client):
+        mock_instance = Mock()
+        mock_instance.optimize.return_value = []
+        MockOptimizer.return_value = mock_instance
+
+        client.post("/api/optimized_lineup", json={
+            "player_pool": [],
+            "load_external_projections": True,
+            "force_refresh_projections": True,
+        })
+
+        mock_instance.load_external_projections.assert_called_once_with(force_refresh=True)
 
     @patch("optimizer.app.DfsDorkOptimizer")
     def test_does_not_call_external_projections_by_default(self, MockOptimizer, client):
