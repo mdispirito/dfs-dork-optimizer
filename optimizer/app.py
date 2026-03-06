@@ -1,53 +1,59 @@
-from flask import Flask, Response
-
+from flask import Flask, Response, jsonify, request
+from flask_cors import CORS
 from pydfs_lineup_optimizer import Site, Sport
-from api.yahoo import YahooApi
-from optimizer import DfsDorkOptimizer
+
+from optimizer.api.yahoo import YahooApi
+from optimizer.optimizer import DfsDorkOptimizer
 
 
 SPORT = "nba"
 app = Flask(__name__)
+CORS(app)
 
 
-@app.route("/contests")
-def get_constests():
+@app.route("/api/contests")
+def get_contests():
     try:
         return YahooApi.get_contests(sport=SPORT).json()
-    except:
-        return Response(response="Unable to get contests", status=500)
+    except Exception as e:
+        return Response(response=f"Unable to get contests: {e}", status=500)
 
 
-@app.route("/<contest_id>/players")
+@app.route("/api/<contest_id>/players")
 def get_players(contest_id):
     try:
         return YahooApi.get_players(contest_id=contest_id).json()["players"]["result"]
-    except:
-        return Response(response=f"Unable to get players for contest {contest_id}", status=500)
+    except Exception as e:
+        return Response(response=f"Unable to get players for contest {contest_id}: {e}", status=500)
 
 
-@app.route("/optimize")
-def get_optimized_lineups(yahoo_player_pool, lineups=1, load_external_projections=False):
+@app.route("/api/optimized_lineup", methods=["POST"])
+def get_optimized_lineups():
     try:
+        body = request.get_json()
+        yahoo_player_pool = body["player_pool"]
+        lineups = body.get("lineups", 1)
+        load_external_projections = body.get("load_external_projections", False)
+        excluded_players = body.get("excluded_players", [])
+        locked_players = body.get("locked_players", [])
+
         optimizer = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
         optimizer.load_yahoo_players(yahoo_player_pool)
 
         if load_external_projections:
             optimizer.load_external_projections()
 
-        return optimizer.get_optimized_lineups(lineups)
-    except:
-        return Response(response=f"Unable to optimize lineups", status=500) 
+        for player_name in excluded_players:
+            optimizer.lineup_optimizer.player_pool.remove_player(player_name)
+
+        for player_name in locked_players:
+            optimizer.lineup_optimizer.player_pool.lock_player(player_name)
+
+        results = list(optimizer.get_optimized_lineups(lineups))
+        return jsonify([str(lineup) for lineup in results])
+    except Exception as e:
+        return Response(response=f"Unable to optimize lineups: {e}", status=500)
 
 
 if __name__ == "__main__":
-    # contests = YahooApi.get_contests(sport="nba")
-    TEST_CONTEST = "13364370"
-
-    optimizer = DfsDorkOptimizer(site=Site.YAHOO, sport=Sport.BASKETBALL)
-    contest_players = YahooApi.get_players(contest_id=TEST_CONTEST).json()["players"]["result"]
-    optimizer.load_yahoo_players(contest_players)
-    optimizer.load_external_projections()
-
-    optimized_lineups = optimizer.get_optimized_lineups(1)
-    for lineup in optimized_lineups:
-        print(lineup)
+    app.run(debug=True, port=8080)
