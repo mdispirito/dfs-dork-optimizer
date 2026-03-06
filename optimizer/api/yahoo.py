@@ -1,21 +1,20 @@
 import requests
 
+YAHOO_DFS_API = "https://dfyql-ro.sports.yahoo.com/v2"
+ENABLED_SPORTS = {"nba"}
 
-class YahooApi(object):
-    endpoint = "https://dfyql-ro.sports.yahoo.com/v2"
-    enabled_sports = ["nba"]
 
-    def __init__(self):
-        pass
+def get_contests(sport: str) -> dict:
+    sport = sport.lower()
+    if sport not in ENABLED_SPORTS:
+        raise ValueError(f"Sport not available: {sport}")
 
-    @classmethod
-    def get_contests(cls, sport: str) -> requests.Response:
-        sport = sport.lower()
-        if sport not in cls.enabled_sports:
-            raise Exception(f"Sport is not available: {sport}")
+    response = requests.get(f"{YAHOO_DFS_API}/contestsFilteredWeb?sport={sport}")
+    response.raise_for_status()
+    return response.json()
 
-        return requests.get(f"{cls.endpoint}/contestsFilteredWeb?&sport={sport}")
 
-    @classmethod
-    def get_players(cls, contest_id) -> requests.Response:
-        return requests.get(f"{cls.endpoint}/contestPlayers?contestId={contest_id}")
+def get_players(contest_id: str) -> list[dict]:
+    response = requests.get(f"{YAHOO_DFS_API}/contestPlayers?contestId={contest_id}")
+    response.raise_for_status()
+    return response.json()["players"]["result"]
