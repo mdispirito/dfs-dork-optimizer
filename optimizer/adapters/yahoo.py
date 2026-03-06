@@ -1,8 +1,9 @@
 from pydfs_lineup_optimizer import Player
-from util.player import generate_player_id
+
+from optimizer.util.player import generate_player_id
 
 
-class YahooAdapter(object):
+class YahooAdapter:
 
     def __init__(self, yahoo_player_pool):
         self.players = yahoo_player_pool
@@ -28,7 +29,7 @@ class YahooAdapter(object):
                     positions=positions,
                     team=team,
                     salary=salary,
-                    fppg=fppg
+                    fppg=fppg,
                 )
             )
 

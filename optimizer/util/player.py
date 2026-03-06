@@ -1,11 +1,17 @@
+import re
 
-def generate_player_id(first_name, last_name, team):
-    # TODO - really janky, do this properly
-    # TODO - check if team is valid and use it in ID
-    stripped_last_name = last_name.lower().replace("jr.", "")
 
-    converted_first_name = "".join([char for char in first_name if char.isalpha()])[:3]
-    converted_last_name = "".join([char for char in stripped_last_name if char.isalpha()])
-    id = converted_first_name.lower() + "_" + converted_last_name.lower()
+def generate_player_id(first_name: str, last_name: str, team: str) -> str:
+    """Generate a consistent player ID from name and team.
 
-    return id
+    Format: first3chars_lastname_team (all lowercase, alpha only).
+    Suffixes like 'Jr.', 'Sr.', 'II', 'III', 'IV' are stripped from last name.
+    """
+    suffixes = re.compile(r'\b(jr\.?|sr\.?|ii|iii|iv)\b', re.IGNORECASE)
+    cleaned_last = suffixes.sub('', last_name).strip()
+
+    first_part = re.sub(r'[^a-z]', '', first_name.lower())[:3]
+    last_part = re.sub(r'[^a-z]', '', cleaned_last.lower())
+    team_part = re.sub(r'[^a-z]', '', team.lower())
+
+    return f"{first_part}_{last_part}_{team_part}"
