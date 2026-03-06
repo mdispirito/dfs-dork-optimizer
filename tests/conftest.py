@@ -40,6 +40,7 @@ SAMPLE_PROJECTIONS_CSV = (
 @pytest.fixture
 def app():
     flask_app.config["TESTING"] = True
+    flask_app.config["SECRET_KEY"] = "test-secret"
     return flask_app
 
 
