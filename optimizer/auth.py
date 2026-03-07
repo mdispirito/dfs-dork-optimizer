@@ -2,34 +2,22 @@ import os
 import time
 
 import requests
-from dotenv import load_dotenv
 from requests_oauthlib import OAuth2Session
 
-load_dotenv()
+from optimizer.config import require_env
 
 YAHOO_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 YAHOO_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
 YAHOO_USERINFO_URL = "https://api.login.yahoo.com/openid/v1/userinfo"
 
-REDIRECT_URI = "http://localhost:8080/auth/yahoo/callback"
+REDIRECT_URI = os.getenv("YAHOO_REDIRECT_URI", "https://localhost:8080/auth/yahoo/callback")
 
-
-def _client_id() -> str:
-    client_id = os.getenv("YAHOO_CLIENT_ID")
-    if not client_id:
-        raise ValueError("YAHOO_CLIENT_ID environment variable not set")
-    return client_id
-
-
-def _client_secret() -> str:
-    client_secret = os.getenv("YAHOO_CLIENT_SECRET")
-    if not client_secret:
-        raise ValueError("YAHOO_CLIENT_SECRET environment variable not set")
-    return client_secret
+_client_id = require_env("YAHOO_CLIENT_ID")
+_client_secret = require_env("YAHOO_CLIENT_SECRET")
 
 
 def create_oauth_session(state: str | None = None) -> OAuth2Session:
-    return OAuth2Session(_client_id(), redirect_uri=REDIRECT_URI, state=state)
+    return OAuth2Session(_client_id, redirect_uri=REDIRECT_URI, state=state)
 
 
 def get_authorization_url() -> tuple[str, str]:
@@ -45,7 +33,7 @@ def exchange_code_for_token(code: str, state: str) -> dict:
     token = oauth.fetch_token(
         YAHOO_TOKEN_URL,
         code=code,
-        client_secret=_client_secret(),
+        client_secret=_client_secret,
     )
     return token
 
@@ -56,8 +44,8 @@ def refresh_access_token(refresh_token: str) -> dict:
     token = oauth.refresh_token(
         YAHOO_TOKEN_URL,
         refresh_token=refresh_token,
-        client_id=_client_id(),
-        client_secret=_client_secret(),
+        client_id=_client_id,
+        client_secret=_client_secret,
     )
     return token
 

@@ -1,6 +1,5 @@
 import os
 
-from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, redirect, request, session
 from flask_cors import CORS
 from pydfs_lineup_optimizer import Site, Sport
@@ -13,15 +12,13 @@ from optimizer.auth import (
     is_token_expired,
     refresh_access_token,
 )
+from optimizer.config import require_env
 from optimizer.optimizer import DfsDorkOptimizer
 
-load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32))
-CORS(app, supports_credentials=True)
-
+app.secret_key = require_env("FLASK_SECRET_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+CORS(app, supports_credentials=True, origins=[FRONTEND_URL])
 
 
 # --- Auth routes ---
@@ -49,6 +46,12 @@ def auth_yahoo_callback():
         token = exchange_code_for_token(code, state)
         session["yahoo_token"] = token
 
+        try:
+            user_info = get_user_info(token["access_token"])
+            session["yahoo_user"] = user_info
+        except Exception:
+            pass
+
         return redirect(FRONTEND_URL)
     except Exception as e:
         return Response(response=f"Auth callback failed: {e}", status=500)
@@ -65,6 +68,7 @@ def auth_status():
         refresh = token.get("refresh_token")
         if not refresh:
             session.pop("yahoo_token", None)
+            session.pop("yahoo_user", None)
             return jsonify({"authenticated": False})
 
         try:
@@ -72,18 +76,17 @@ def auth_status():
             session["yahoo_token"] = token
         except Exception:
             session.pop("yahoo_token", None)
+            session.pop("yahoo_user", None)
             return jsonify({"authenticated": False})
 
-    try:
-        user_info = get_user_info(token["access_token"])
-        return jsonify({"authenticated": True, "user": user_info})
-    except Exception:
-        return jsonify({"authenticated": True})
+    user_info = session.get("yahoo_user")
+    return jsonify({"authenticated": True, "user": user_info})
 
 
 @app.route("/auth/logout", methods=["POST"])
 def auth_logout():
     session.pop("yahoo_token", None)
+    session.pop("yahoo_user", None)
     return jsonify({"logged_out": True})
 
 
@@ -128,4 +131,4 @@ def optimize_lineups():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8080)
+    app.run(debug=True, port=8080, ssl_context="adhoc")
