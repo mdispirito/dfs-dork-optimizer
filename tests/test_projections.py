@@ -63,16 +63,14 @@ class TestFetchProjections:
         assert mock_get.call_count == 2
 
     @patch("optimizer.projections.requests.get")
+    @patch("optimizer.projections._ttl", 1)
     def test_refetches_after_ttl_expires(self, mock_get):
         mock_response = Mock()
         mock_response.text = FAKE_CSV
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        with patch.dict("os.environ", {
-            "EXTERNAL_PROJECTIONS": "http://example.com/proj.csv",
-            "PROJECTIONS_TTL_SECONDS": "1",
-        }):
+        with patch.dict("os.environ", {"EXTERNAL_PROJECTIONS": "http://example.com/proj.csv"}):
             fetch_projections()
             time.sleep(1.1)
             fetch_projections()

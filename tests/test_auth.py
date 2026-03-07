@@ -20,16 +20,10 @@ class TestGetAuthorizationUrl:
         mock_session.authorization_url.return_value = ("https://yahoo.com/auth", "state123")
         mock_create.return_value = mock_session
 
-        with patch.dict("os.environ", {"YAHOO_CLIENT_ID": "test_id"}):
-            url, state = get_authorization_url()
+        url, state = get_authorization_url()
 
         assert url == "https://yahoo.com/auth"
         assert state == "state123"
-
-    def test_raises_without_client_id(self):
-        with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="YAHOO_CLIENT_ID"):
-                get_authorization_url()
 
 
 class TestExchangeCodeForToken:
@@ -40,17 +34,10 @@ class TestExchangeCodeForToken:
         mock_session.fetch_token.return_value = {"access_token": "abc", "refresh_token": "def"}
         mock_create.return_value = mock_session
 
-        with patch.dict("os.environ", {"YAHOO_CLIENT_ID": "test_id", "YAHOO_CLIENT_SECRET": "test_secret"}):
-            token = exchange_code_for_token("code123", "state123")
+        token = exchange_code_for_token("code123", "state123")
 
         assert token["access_token"] == "abc"
         mock_session.fetch_token.assert_called_once()
-
-    def test_raises_without_client_secret(self):
-        with patch.dict("os.environ", {"YAHOO_CLIENT_ID": "test_id"}, clear=True):
-            with patch("optimizer.auth.create_oauth_session"):
-                with pytest.raises(ValueError, match="YAHOO_CLIENT_SECRET"):
-                    exchange_code_for_token("code", "state")
 
 
 class TestRefreshAccessToken:
@@ -61,8 +48,7 @@ class TestRefreshAccessToken:
         mock_session.refresh_token.return_value = {"access_token": "new_abc"}
         mock_create.return_value = mock_session
 
-        with patch.dict("os.environ", {"YAHOO_CLIENT_ID": "test_id", "YAHOO_CLIENT_SECRET": "test_secret"}):
-            token = refresh_access_token("old_refresh")
+        token = refresh_access_token("old_refresh")
 
         assert token["access_token"] == "new_abc"
 

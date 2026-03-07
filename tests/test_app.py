@@ -55,10 +55,9 @@ class TestAuthStatusRoute:
                 "access_token": "abc",
                 "expires_at": time.time() + 3600,
             }
+            sess["yahoo_user"] = {"name": "Test User"}
 
-        with patch("optimizer.app.get_user_info") as mock_user:
-            mock_user.return_value = {"name": "Test User"}
-            resp = client.get("/auth/status")
+        resp = client.get("/auth/status")
 
         data = resp.get_json()
         assert data["authenticated"] is True
@@ -77,10 +76,9 @@ class TestAuthStatusRoute:
                 "refresh_token": "refresh_abc",
                 "expires_at": time.time() - 100,
             }
+            sess["yahoo_user"] = {"name": "Test User"}
 
-        with patch("optimizer.app.get_user_info") as mock_user:
-            mock_user.return_value = {"name": "Test User"}
-            resp = client.get("/auth/status")
+        resp = client.get("/auth/status")
 
         data = resp.get_json()
         assert data["authenticated"] is True
